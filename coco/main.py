@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('-dataset', type=str, default='colour', choices=['colour', 'places'])
 parser.add_argument('-method', type=str, default='baseline',
-        choices=['baseline', 'irmv1', 'rex', 'dro', 'reweight', 'cirmv1', 'crex', 'cdro', 'cmmd', 'pgi'])
+        choices=['baseline', 'irmv1', 'rex', 'dro', 'reweight', 'cirmv1', 'crex', 'cdro', 'cmmd', 'pgi', 'ib_irmv1', 'ib_cirmv1', 'ib_erm'])
 parser.add_argument('-sample', type=str, default='balance', choices=['balance', 'normal'])
 parser.add_argument('-lr', default=0.1, type=float)
 parser.add_argument('-gamma', default=5e-4, type=float)
@@ -32,8 +32,11 @@ parser.add_argument('-C0', default=0, type=float)
 parser.add_argument('-C1', default=0, type=float)
 parser.add_argument('-u', default=10, type=int)
 parser.add_argument('-e', default=1, type=int)
+parser.add_argument('-ib_penalty_activate_epoch', default=1, type=int)
+parser.add_argument('-ib_penalty_ramp_over_epoch', default=10, type=int)
 parser.add_argument('-r', default=0.8, type=float)
 parser.add_argument('-wc', default=0.0, type=float)
+parser.add_argument('-ib_penalty', default=0.0, type=float)
 parser.add_argument('-v', action='store_true')
 
 args = vars(parser.parse_args())
@@ -43,11 +46,14 @@ BATCH_SIZE = args['bs']
 LR = args['lr']
 GAMMA = args['gamma']
 WC = args['wc']
+IB_PENALTY = args['ib_penalty']
 DRO_C0 = args['C0']
 DRO_C1 = args['C1']
 RAMP_OVER = args['u']
+IB_RAMP_OVER = args['ib_penalty_ramp_over_epoch']
 SAMPLE = args['sample']
 EPOCH_AT = args['e']
+IB_EPOCH_AT = args['ib_penalty_activate_epoch']
 
 VALIDATION = args['v']
 
@@ -102,6 +108,10 @@ DIM_PART = DIM_CLASS
 PART_START_AT = EPOCH_AT*iters_per_epoch
 if METHOD in ['dro', 'cdro']: RAMP_UP = 1
 else:                         RAMP_UP = iters_per_epoch*RAMP_OVER
+
+IB_PART_START_AT = IB_EPOCH_AT*iters_per_epoch
+IB_RAMP_UP = iters_per_epoch*IB_RAMP_OVER
+
 PART_LR = 1e-4
 
 METHODS_FOR_PART = ['pgi', 'irmv1', 'cirmv1', 'dro', 'cdro', 'rex', 'crex', 'reweight', 'cmmd']
@@ -124,6 +134,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
 
     T = tf.placeholder(tf.float32, shape=[1,], name='T')
     weight_adapt = tf.placeholder(tf.float32, shape=None, name='weight_adapt')
+    ib_weight_adapt = tf.placeholder(tf.float32, shape=None, name='ib_weight_adapt')
     dro_weights = tf.placeholder(tf.float32, shape=[2,], name='dro_weights')
     cdro_weights = tf.placeholder(tf.float32, shape=[OUTPUT_DIM,2], name='cdro_weights')
     beta = tf.placeholder(tf.int32, shape=[None,], name='beta')
@@ -135,6 +146,8 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
     scaled_images = tf.cond(is_training, lambda: preprocess_images(scaled_images), lambda: scaled_images)
 
     features = feature_learner('theta_f', scaled_images, DIM_CLASS, is_training=is_training, dropout=DROPOUT)
+    ib_penalty = tf.reduce_mean(tf.math.reduce_variance(features, axis=0))
+    #import pdb; pdb.set_trace()
     logits = predictor('theta_p', features, OUTPUT_DIM)
     ###################################################################################
 
@@ -221,7 +234,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
             xentropy_cost = tf.reduce_mean(xentropy_costs)
 
     ####################################################################################
-    elif METHOD == 'irmv1':
+    elif METHOD == 'irmv1' or METHOD == 'ib_irmv1':
         dummy = tf.get_variable('dummy', shape=(1,OUTPUT_DIM), initializer=tf.constant_initializer(value=1.0), trainable=False)
         env_logits = tf.dynamic_partition(logits, beta, 2)
         env_labels = tf.dynamic_partition(labels, beta, 2)
@@ -250,7 +263,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
 
 
     ####################################################################################
-    elif METHOD == 'cirmv1':
+    elif METHOD == 'cirmv1' or METHOD == 'ib_cirmv1':
         invariance_penalty = tf.convert_to_tensor(0.0)
         class_partitioned_logits = tf.dynamic_partition(logits, labels, OUTPUT_DIM)
         class_partitioned_labels = tf.dynamic_partition(labels, labels, OUTPUT_DIM)
@@ -403,19 +416,25 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
             xentropy_cost = tf.reduce_mean(xentropy_costs)
     ####################################################################################
 
+    elif METHOD == 'ib_erm':
+        xentropy_cost = tf.reduce_mean(xentropy_costs)
 
     ####################################################################################
     else: xentropy_cost = tf.reduce_mean(xentropy_costs)
     ####################################################################################
 
+    if METHOD == 'ib_erm' or METHOD == 'ib_irmv1' or METHOD == 'ib_cirmv1':
+        ib_penalty = ib_penalty
+    else:
+        ib_penalty = 0.0
 
     ####################################################################################
-    classifier_cost  = xentropy_cost + L2 + weight_adapt*invariance_penalty
+    classifier_cost  = xentropy_cost + L2 + weight_adapt*invariance_penalty + ib_weight_adapt*ib_penalty
     ####################################################################################
 
 
     ####################################################################################
-    if METHOD in ['irmv1', 'rex', 'crex', 'cirmv1']:
+    if METHOD in ['irmv1', 'rex', 'crex', 'cirmv1', 'ib_irmv1', 'ib_cirmv1']:
         classifier_cost  = tf.cond(tf.greater(weight_adapt, 1.0), lambda: classifier_cost/weight_adapt, lambda: classifier_cost)
     ####################################################################################
 
@@ -477,6 +496,9 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
         if iteration <= PART_START_AT: wc = 0.0
         else:                          wc = WC*min(1.0, 1.0*(iteration-PART_START_AT+1)/RAMP_UP)
 
+        if iteration <= IB_PART_START_AT: ib_wc = 0.0
+        else:                          ib_wc = IB_PENALTY*min(1.0, 1.0*(iteration-IB_PART_START_AT+1)/IB_RAMP_UP)
+
         if iteration == C1*iters_per_epoch:    _lr *= 0.1
         elif iteration == C2*iters_per_epoch:  _lr *= 0.1
         elif iteration == C3*iters_per_epoch:  _lr *= 0.1
@@ -520,7 +542,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
                 assert(np.all(q >= 0) and np.all(q <= 1))
 
             _classifier_cost, _classification_accuracies, _ = session.run([xentropy_cost, class_accuracies, class_train_op],
-                    feed_dict={images: _data[0], labels: _data[1], beta: _beta, lr: _lr, dro_weights: q, is_training: True, weight_adapt: 0.0})
+                    feed_dict={images: _data[0], labels: _data[1], beta: _beta, lr: _lr, dro_weights: q, is_training: True, weight_adapt: 0.0, ib_weight_adapt: 0.0})
 
         elif METHOD == 'cdro' and iteration > PART_START_AT:
             indsb = np.random.choice(np.where(betas == 0)[0], BATCH_SIZE//2, replace=False)
@@ -547,7 +569,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
                     cq[ci,:] = cq[ci,:]/np.sum(cq[ci,:])
 
             _classifier_cost, _classification_accuracies, _ = session.run([xentropy_cost, class_accuracies, class_train_op],
-                    feed_dict={images: _data[0], labels: _data[1], beta: _beta, lr: _lr, cdro_weights: cq, is_training: True, weight_adapt: 0.0})
+                    feed_dict={images: _data[0], labels: _data[1], beta: _beta, lr: _lr, cdro_weights: cq, is_training: True, weight_adapt: 0.0, ib_weight_adapt: 0.0})
 
         else:
             _classifier_cost, _classification_accuracies, _invariance_cost, _ = session.run([xentropy_cost, class_accuracies, invariance_penalty, class_train_op],
@@ -556,7 +578,8 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
                         dro_weights: np.ones((2,),dtype='float32'),
                         cdro_weights: np.ones((OUTPUT_DIM,2),dtype='float32'),
                         is_training: True,
-                        weight_adapt: wc})
+                        weight_adapt: wc,
+                        ib_weight_adapt: ib_wc})
         ###############################################################################
 
 
