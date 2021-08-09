@@ -629,6 +629,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
             print(' ID test = {:.3f}'.format(np.mean(id_test_accs)), end=' ')
             print(' OOD test = {:.3f}'.format(np.mean(ood_test_accs)), end=' ')
             print(' SG test = {:.3f}'.format(np.mean(sg_test_accs)), end=' ')
+            print(' ')
             #print(' Anomaly detection = {:.3f}'.format(msp_av_prec))
 
             id_accs += [np.mean(id_test_accs)]
