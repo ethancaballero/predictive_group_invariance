@@ -7,7 +7,7 @@
 #SBATCH -o /scratch/ethancab/syst-gen-outputs/slurm-%j.out  # Write the log in $SCRATCH
 
 ib_penalty_activate_epoch="1"
-ib_penalty_ramp_over_epoch"10"
+ib_penalty_ramp_over_epoch="10"
 ib_penalty="1.0"
 method="baseline"
 
