@@ -12,6 +12,7 @@ ib_penalty="1.0"
 method="baseline"
 wc="0.0001"
 u="200"
+bs="64"
 
 user=$USER
 echo "$user"
@@ -43,6 +44,10 @@ case $i in
     u="${i#*=}"
     shift # past argument=value
     ;;
+    -g=*|--bs=*)
+    bs="${i#*=}"
+    shift # past argument=value
+    ;;
     *)
           # unknown option
     ;;
@@ -58,6 +63,7 @@ echo "$ib_penalty"
 echo "$method"
 echo "$wc"
 echo "$u"
+echo "$bs"
 
 if [[ -n $1 ]]; then
     echo "Argument not recognised"
@@ -70,4 +76,4 @@ cd $env_dir
 source env_tf1/bin/activate
 cd $code_dir
 #DATA_DIR=/scratch/ethancab/syst-gen SLURM_TMPDIR=/scratch/ethancab/syst-gen python main.py -method ib_irmv1 -bs 2
-DATA_DIR=/scratch/ethancab/syst-gen SLURM_TMPDIR=/scratch/ethancab/syst-gen python main.py -wc $wc -u $u -ib_penalty_activate_epoch $ib_penalty_activate_epoch -ib_penalty_ramp_over_epoch $ib_penalty_ramp_over_epoch -ib_penalty $ib_penalty -method $method
+DATA_DIR=/scratch/ethancab/syst-gen SLURM_TMPDIR=/scratch/ethancab/syst-gen python main.py -wc $wc -u $u -ib_penalty_activate_epoch $ib_penalty_activate_epoch -ib_penalty_ramp_over_epoch $ib_penalty_ramp_over_epoch -ib_penalty $ib_penalty -method $method -bs $bs
