@@ -70,4 +70,4 @@ cd $env_dir
 source env_tf1/bin/activate
 cd $code_dir
 #DATA_DIR=/scratch/ethancab/syst-gen SLURM_TMPDIR=/scratch/ethancab/syst-gen python main.py -method ib_irmv1 -bs 2
-DATA_DIR=/scratch/ethancab/syst-gen SLURM_TMPDIR=/scratch/ethancab/syst-gen python main.py -wc $wc -u $u -ib_penalty_activate_epoch $ib_penalty_activate_epoch --ib_penalty_ramp_over_epoch $ib_penalty_ramp_over_epoch --ib_penalty $ib_penalty --method $method
+DATA_DIR=/scratch/ethancab/syst-gen SLURM_TMPDIR=/scratch/ethancab/syst-gen python main.py -wc $wc -u $u -ib_penalty_activate_epoch $ib_penalty_activate_epoch -ib_penalty_ramp_over_epoch $ib_penalty_ramp_over_epoch -ib_penalty $ib_penalty -method $method
