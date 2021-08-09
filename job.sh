@@ -21,8 +21,8 @@ case $i in
     ib_penalty_activate_epoch="${i#*=}"
     shift # past argument=value
     ;;
-    -b=*|--ib_penalty_activate_epoch=*)
-    ib_penalty_activate_epoch="${i#*=}"
+    -b=*|--ib_penalty_ramp_over_epoch=*)
+    ib_penalty_ramp_over_epoch="${i#*=}"
     shift # past argument=value
     ;;
     -c=*|--ib_penalty=*)
