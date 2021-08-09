@@ -6,9 +6,11 @@ import numpy as np
 import scipy
 import imageio
 
+"""
 import sklearn
 from sklearn.cluster import KMeans
 import sklearn.metrics
+#"""
 
 import tensorflow as tf
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -616,7 +618,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
             msp_ins, msp_outs = np.concatenate(normal_pmaxes), np.concatenate(abnormal_pmaxes)
             TRUE_LABELS = np.hstack((np.zeros(len(msp_ins)), np.ones(len(msp_outs))))
             MSP_TESTS = np.hstack((msp_ins, msp_outs))
-            msp_av_prec = 100.*sklearn.metrics.average_precision_score(TRUE_LABELS, -MSP_TESTS)
+            #msp_av_prec = 100.*sklearn.metrics.average_precision_score(TRUE_LABELS, -MSP_TESTS)
 
             ##########################################################################
 
@@ -627,9 +629,10 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as session:
             print(' ID test = {:.3f}'.format(np.mean(id_test_accs)), end=' ')
             print(' OOD test = {:.3f}'.format(np.mean(ood_test_accs)), end=' ')
             print(' SG test = {:.3f}'.format(np.mean(sg_test_accs)), end=' ')
-            print(' Anomaly detection = {:.3f}'.format(msp_av_prec))
+            #print(' Anomaly detection = {:.3f}'.format(msp_av_prec))
 
             id_accs += [np.mean(id_test_accs)]
             ood_accs += [np.mean(ood_test_accs)]
             sg_accs += [np.mean(sg_test_accs)]
-            av_precs += [msp_av_prec]
+            #av_precs += [msp_av_prec]
+            av_precs += [0.0]
