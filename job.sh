@@ -10,6 +10,8 @@ ib_penalty_activate_epoch="1"
 ib_penalty_ramp_over_epoch="10"
 ib_penalty="1.0"
 method="baseline"
+wc="0.0001"
+u="200"
 
 user=$USER
 echo "$user"
@@ -33,6 +35,14 @@ case $i in
     method="${i#*=}"
     shift # past argument=value
     ;;
+    -e=*|--wc=*)
+    wc="${i#*=}"
+    shift # past argument=value
+    ;;
+    -f=*|--u=*)
+    u="${i#*=}"
+    shift # past argument=value
+    ;;
     *)
           # unknown option
     ;;
@@ -46,6 +56,8 @@ echo "$ib_penalty_activate_epoch"
 echo "$ib_penalty_ramp_over_epoch"
 echo "$ib_penalty"
 echo "$method"
+echo "$wc"
+echo "$u"
 
 if [[ -n $1 ]]; then
     echo "Argument not recognised"
@@ -57,4 +69,5 @@ module load python/3.7
 cd $env_dir
 source env_tf1/bin/activate
 cd $code_dir
-DATA_DIR=/scratch/ethancab/syst-gen SLURM_TMPDIR=/scratch/ethancab/syst-gen python main.py -method ib_irmv1 -bs 2
+#DATA_DIR=/scratch/ethancab/syst-gen SLURM_TMPDIR=/scratch/ethancab/syst-gen python main.py -method ib_irmv1 -bs 2
+DATA_DIR=/scratch/ethancab/syst-gen SLURM_TMPDIR=/scratch/ethancab/syst-gen python main.py -wc $wc -u $u -ib_penalty_activate_epoch $ib_penalty_activate_epoch --ib_penalty_ramp_over_epoch $ib_penalty_ramp_over_epoch --ib_penalty $ib_penalty --method $method
